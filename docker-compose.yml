@@ -1,0 +1,100 @@
+version: "3.9"
+
+# =============================================================================
+# OCR Facturas — docker-compose para desarrollo y despliegue local
+# =============================================================================
+# Uso esperado:
+#   docker compose up --build
+#
+# Servicios incluidos:
+#   - api: API FastAPI (puerto 8000)
+#
+# Servicios opcionales (descomentar perfil para activar):
+#   - vlm:  modelo visual local (Qwen2.5-VL) — GPU necesaria
+#   - redis: broker para procesamiento asíncrono futuro (RQ/Celery)
+#
+# Política de persistencia por defecto: NO se persisten facturas ni resultados.
+# Los volúmenes marcados como tmpfs mantienen datos solo en memoria;
+# si no se especifica tmpfs, solo se usa /tmp del contenedor que es efímero.
+# =============================================================================
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - STORE_INPUT_FILES=false
+      - STORE_EXTRACTION_RESULTS=false
+      - INCLUDE_DEBUG_ARTIFACTS=false
+    # Seguridad: contenedor sin privilegios, solo lectura del código
+    read_only: true
+    # tmpfs para temporales efímeros — nada se persiste en disco del host
+    tmpfs:
+      - /tmp:mode=01777
+    # Límites de recursos — la API no necesita mucha RAM sin OCR/VLM
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    profiles:
+      - default
+
+  # -------------------------------------------------------------------------
+  # Servicio opcional: VLM local (Qwen2.5-VL)
+  # -------------------------------------------------------------------------
+  # DESACTIVADO por defecto. Requiere GPU NVIDIA con soporte CUDA.
+  # Para activar: docker compose --profile vlm up
+  # Advertencia: este servicio descarga ~15GB de modelos en la primera ejecución.
+  # -------------------------------------------------------------------------
+  vlm:
+    build:
+      context: .
+      dockerfile: docker/vlm.Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - VLLM_HOST=0.0.0.0
+      - VLLM_PORT=8001
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    profiles:
+      - vlm  # GPU NVIDIA con soporte CUDA
+
+  # -------------------------------------------------------------------------
+  # Servicio opcional: Redis para procesamiento asíncrono futuro
+  # -------------------------------------------------------------------------
+  # DESACTIVADO por defecto. Usado por workers RQ/Celery cuando se implemente B12.
+  # Para activar: docker compose --profile redis up
+  # -------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    # Redis persiste por defecto; marcar como tmpfs si se quiere efímero
+    volumes:
+      - redis_data:/data
+    profiles:
+      - redis
+    command: redis-server --appendonly no  # sin persistencia AOF para modo efímero
+
+volumes:
+  # Named volume solo para Redis; los datos son efímeros por defecto
+  redis_data:
+    driver: local

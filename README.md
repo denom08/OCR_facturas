@@ -46,11 +46,30 @@ Comprobar salud:
 curl http://127.0.0.1:8000/health
 ```
 
-## Documentación principal
+## Despliegue con Docker
 
-- `docs/arquitectura-extraccion-facturas.md`: arquitectura base y decisiones del MVP.
-- `docs/plan-implantacion.md`: bloques de implantación y progreso.
+El proyecto incluye `docker/api.Dockerfile` y `docker-compose.yml` para ejecución local.
+
+```bash
+# Arrancar la API
+docker compose up --build
+
+# Verificar que funciona
+curl http://localhost:8000/health
+
+# Activar servicios opcionales
+docker compose --profile vlm up    # VLM local (requiere GPU NVIDIA)
+docker compose --profile redis up  # Redis para asincronía futura
+```
+
+Consulta `docs/deployment.md` para requisitos de hardware, perfiles opcionales y decisiones de privacidad.
 
 ## Privacidad
 
 Las facturas, XML e imágenes reales no deben subirse al repositorio. El MVP no persiste documentos ni resultados por defecto.
+
+## Documentación principal
+
+- `docs/arquitectura-extraccion-facturas.md`: arquitectura base y decisiones del MVP.
+- `docs/plan-implantacion.md`: bloques de implantación y progreso.
+- `docs/deployment.md`: despliegue con Docker, perfiles opcionales y decisiones de privacidad.
