@@ -324,21 +324,35 @@ Si el PDF contiene XML reconocido, se extrae la factura desde XML y se marca com
 
 **Objetivo:** convertir páginas imagen en texto con coordenadas y confianza.
 
-**Estado:** Pendiente
+**Estado:** Hecho
 
 ## Tareas
 
-- [ ] Definir puerto `OcrEngine`.
-- [ ] Integrar PaddleOCR básico.
-- [ ] Convertir páginas PDF a imágenes para OCR.
-- [ ] Normalizar salida OCR a bloques internos.
-- [ ] Guardar confianza por bloque.
-- [ ] Añadir opción `force_ocr`.
-- [ ] Añadir tests con imágenes/PDFs escaneados simples.
+- [x] Definir puerto `OcrEngine` en `app/application/ports/ocr_engine.py`.
+- [x] Integrar PaddleOCR básico lazily en `app/infrastructure/ocr/paddle_ocr_engine.py`.
+- [x] Convertir páginas PDF a imágenes para OCR (reutiliza `PdfReader.render_page_to_image` de B3).
+- [x] Normalizar salida OCR a `NormalizedDocument` con `ExtractionSource.OCR`.
+- [x] Guardar confianza por bloque (`NormalizedBlock.confidence`).
+- [x] Añadir opción `force_ocr` en endpoint/pipeline: si `True` o PDF es SCANNED/HYBRID, usa OCR.
+- [x] Respuesta controlada cuando OCR no está disponible: `status=error` + `code=ocr_unavailable`, sin crashear.
+- [x] Tests con motor OCR fake (`FakeOcrEngine`, `UnavailableOcrEngine`) en `tests/unit/test_ocr_pipeline.py` (13 tests).
+- [x] Extra opcional `paddleocr` en `pyproject.toml` con documentación de instalación.
 
 ## Resultado verificable
 
 Un PDF escaneado produce documento normalizado con texto, coordenadas y confianza.
+Si PaddleOCR no está instalado, la API responde con error controlado y warning.
+
+## Notas de implementación
+
+- `PaddleOcrEngine` es **lazy**: no carga modelos hasta `process_image()` — permite que la API
+  funcione sin PaddleOCR instalado y que `pytest` corra sin GPU/modelos.
+- `force_ocr=True` fuerza el pipeline OCR aunque el PDF clasifique como DIGITAL.
+- `NormalizedBlock` tiene nuevo campo `confidence` (0.0-1.0) para bloques OCR.
+- El pipeline OCR (`ocr_pipeline.py`) reutiliza `extract_candidates()` de B4 sobre texto OCR,
+  manteniendo la arquitectura de candidatos sin duplicar lógica de extracción.
+- Bug corregido en `extract_candidates.py:_extract_company_names`: variable `section` no inicializada
+  antes de uso en fallback path.
 
 ## Puede hacerlo en paralelo
 
@@ -691,8 +705,8 @@ Usar esta tabla para mantener visibilidad del avance.
 | B2 Dominio + validadores | Hecho | Agente | Normalización monetaria, CIF/NIF/NIE, fechas, totales/IVA/retenciones y warnings de dominio. Verificado con `python -m pytest` y `python -m ruff check .`. |
 | B3 Infraestructura PDF | Hecho | Agente | Puerto PdfReader con PyMuPDF, clasificador PdfKind (DIGITAL/HYBRID/SCANNED/EMBEDDED_XML), renderizado a imagen, tests con fixtures sintéticas. Verificado con `python -m pytest` y `python -m ruff check .`. |
 | B4 Pipeline digital | Hecho | Agente | Normalizado, extractores por patrones (número, fecha, CIF/NIF/NIE, razón social, IVA, totales), heurísticas emisor/cliente, evidencias, validación B2, tests con fixtures sintéticas. Verificado con `python -m pytest` y `python -m ruff check .`. |
-| B5 XML embebido | Pendiente | — | — |
-| B6 OCR/renderizado | Pendiente | — | — |
+| B5 XML embebido | Hecho | Agente | PyMuPDF embfile_get para extraer XMLs; parser Facturae 3.2 con mapeo a schema Invoice; detección formatos (Facturae/UBL/CII); pipeline XML con validación B2; 34 tests nuevos. Verificado con `python -m pytest` (159 passed) y `python -m ruff check .` (All checks passed). |
+| B6 OCR/renderizado | Hecho | Agente | Puerto OcrEngine, adaptador PaddleOcrEngine lazy, pipeline OCR con normalización a NormalizedDocument, confianza por bloque, force_ocr, respuesta controlada sin OCR, 13 tests con FakeOcrEngine. Verificado con `python -m pytest` (172 passed) y `python -m ruff check .` (All checks passed). |
 | B7 Layout/tablas | Pendiente | — | — |
 | B8 Resolución/confianza/evidencias | Hecho | Agente | ResolvedField, ResolutionResult, SourcePriority, resolve_field, resolve_document, adjust_confidence_for_tax_id, 40 tests. Listo para B5/B6/B9. |
 | B9 VLM local | Pendiente | — | — |
