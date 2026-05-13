@@ -1,0 +1,62 @@
+[
+  {
+    "invoice_file": "scanned_synth_001.pdf",
+    "invoice_type": "scanned",
+    "expected": {
+      "invoice_data": {
+        "number": "SCN-2026-001",
+        "issue_date": "2026-02-01",
+        "due_date": null
+      },
+      "supplier": {
+        "legal_name": "Servicios de Limpieza Profesional S.L.",
+        "tax_id": "A55667890"
+      },
+      "customer": {
+        "legal_name": "Comunidad de Propietarios Residencial Norte",
+        "tax_id": "H33445566"
+      },
+      "tax_lines": [
+        {"tax_rate": "21.00", "tax_base": "600.00", "tax_amount": "126.00"}
+      ],
+      "totals": {
+        "net_amount": "600.00",
+        "tax_amount": "126.00",
+        "gross_amount": "726.00",
+        "advance_amount": null,
+        "withholding_amount": null
+      }
+    }
+  },
+  {
+    "invoice_file": "scanned_synth_002.pdf",
+    "invoice_type": "scanned",
+    "expected": {
+      "invoice_data": {
+        "number": "2026-SC-055",
+        "issue_date": "2026-03-18",
+        "due_date": "2026-04-18"
+      },
+      "supplier": {
+        "legal_name": "Seguridad y Vigilancia del Norte S.A.",
+        "tax_id": "B66778899"
+      },
+      "customer": {
+        "legal_name": "Centro ComercialShopping Mall S.A.",
+        "tax_id": "X3377441T"
+      },
+      "tax_lines": [
+        {"tax_rate": "21.00", "tax_base": "1800.00", "tax_amount": "378.00"},
+        {"tax_rate": "10.00", "tax_base": "400.00", "tax_amount": "40.00"},
+        {"tax_rate": "4.00", "tax_base": "200.00", "tax_amount": "8.00"}
+      ],
+      "totals": {
+        "net_amount": "2400.00",
+        "tax_amount": "426.00",
+        "gross_amount": "2826.00",
+        "advance_amount": null,
+        "withholding_amount": null
+      }
+    }
+  }
+]

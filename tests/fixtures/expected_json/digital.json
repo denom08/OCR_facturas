@@ -1,0 +1,91 @@
+[
+  {
+    "invoice_file": "digital_synth_001.pdf",
+    "invoice_type": "digital",
+    "expected": {
+      "invoice_data": {
+        "number": "FAC-2026-001",
+        "issue_date": "2026-01-15",
+        "due_date": "2026-02-15"
+      },
+      "supplier": {
+        "legal_name": "Servicios Integrales del Norte S.L.",
+        "tax_id": "A12345678"
+      },
+      "customer": {
+        "legal_name": "Distribuciones del Levante S.A.",
+        "tax_id": "B98765432"
+      },
+      "tax_lines": [
+        {"tax_rate": "21.00", "tax_base": "1000.00", "tax_amount": "210.00"},
+        {"tax_rate": "10.00", "tax_base": "500.00", "tax_amount": "50.00"}
+      ],
+      "totals": {
+        "net_amount": "1500.00",
+        "tax_amount": "260.00",
+        "gross_amount": "1760.00",
+        "advance_amount": null,
+        "withholding_amount": null
+      }
+    }
+  },
+  {
+    "invoice_file": "digital_synth_002.pdf",
+    "invoice_type": "digital",
+    "expected": {
+      "invoice_data": {
+        "number": "2026/045",
+        "issue_date": "2026-02-20",
+        "due_date": null
+      },
+      "supplier": {
+        "legal_name": "Proveedor Técnico Avanzado S.L.",
+        "tax_id": "B56781234"
+      },
+      "customer": {
+        "legal_name": "Consultora Tech Solutions S.A.",
+        "tax_id": "C43218765"
+      },
+      "tax_lines": [
+        {"tax_rate": "21.00", "tax_base": "2500.00", "tax_amount": "525.00"}
+      ],
+      "totals": {
+        "net_amount": "2500.00",
+        "tax_amount": "525.00",
+        "gross_amount": "3025.00",
+        "advance_amount": null,
+        "withholding_amount": null
+      }
+    }
+  },
+  {
+    "invoice_file": "digital_synth_003.pdf",
+    "invoice_type": "digital",
+    "expected": {
+      "invoice_data": {
+        "number": "INV-2026-100",
+        "issue_date": "2026-03-10",
+        "due_date": "2026-04-10"
+      },
+      "supplier": {
+        "legal_name": "Alquileres y Servicios Varios S.L.",
+        "tax_id": "A99123456"
+      },
+      "customer": {
+        "legal_name": "Gestión Empresarial Global S.A.",
+        "tax_id": "X2487613Y"
+      },
+      "tax_lines": [
+        {"tax_rate": "21.00", "tax_base": "800.00", "tax_amount": "168.00"},
+        {"tax_rate": "4.00", "tax_base": "200.00", "tax_amount": "8.00"}
+      ],
+      "totals": {
+        "net_amount": "1000.00",
+        "tax_amount": "176.00",
+        "gross_amount": "1176.00",
+        "advance_amount": "100.00",
+        "withholding_amount": null
+      }
+    }
+  }
+]

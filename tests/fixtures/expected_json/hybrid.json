@@ -1,0 +1,61 @@
+[
+  {
+    "invoice_file": "hybrid_synth_001.pdf",
+    "invoice_type": "hybrid",
+    "expected": {
+      "invoice_data": {
+        "number": "H-FAC-2026-001",
+        "issue_date": "2026-01-22",
+        "due_date": "2026-02-22"
+      },
+      "supplier": {
+        "legal_name": "Suministros Industriales del Norte S.A.",
+        "tax_id": "A44889922"
+      },
+      "customer": {
+        "legal_name": "Montajes y Instalaciones del Sur S.L.",
+        "tax_id": "B55667788"
+      },
+      "tax_lines": [
+        {"tax_rate": "21.00", "tax_base": "3200.00", "tax_amount": "672.00"}
+      ],
+      "totals": {
+        "net_amount": "3200.00",
+        "tax_amount": "672.00",
+        "gross_amount": "3872.00",
+        "advance_amount": null,
+        "withholding_amount": null
+      }
+    }
+  },
+  {
+    "invoice_file": "hybrid_synth_002.pdf",
+    "invoice_type": "hybrid",
+    "expected": {
+      "invoice_data": {
+        "number": "2026-H-033",
+        "issue_date": "2026-03-05",
+        "due_date": null
+      },
+      "supplier": {
+        "legal_name": "Materiales de Construcción Avanzados S.L.",
+        "tax_id": "C77334455"
+      },
+      "customer": {
+        "legal_name": "Obras y Reformas del Centro S.A.",
+        "tax_id": "D22446688"
+      },
+      "tax_lines": [
+        {"tax_rate": "21.00", "tax_base": "4500.00", "tax_amount": "945.00"},
+        {"tax_rate": "10.00", "tax_base": "1200.00", "tax_amount": "120.00"}
+      ],
+      "totals": {
+        "net_amount": "5700.00",
+        "tax_amount": "1065.00",
+        "gross_amount": "6765.00",
+        "advance_amount": null,
+        "withholding_amount": "285.00"
+      }
+    }
+  }
+]

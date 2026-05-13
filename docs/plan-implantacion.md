@@ -204,23 +204,23 @@ Los validadores detectan errores contables y documentos incompletos sin depender
 
 **Objetivo:** leer y clasificar PDFs antes de decidir si usar texto, XML, OCR o VLM.
 
-**Estado:** Pendiente
+**Estado:** Hecho
 
 ## Tareas
 
-- [ ] Crear puerto `PdfReader` en `app/application/ports/pdf_reader.py`.
-- [ ] Implementar adaptador con PyMuPDF:
-  - [ ] contar páginas;
-  - [ ] extraer texto por página;
-  - [ ] extraer bloques con coordenadas si es viable;
-  - [ ] detectar imágenes por página.
-- [ ] Implementar clasificador `PdfKind`:
-  - [ ] `DIGITAL`;
-  - [ ] `HYBRID`;
-  - [ ] `SCANNED`;
-  - [ ] `EMBEDDED_XML`.
-- [ ] Implementar renderizado básico de páginas a imagen.
-- [ ] Añadir tests con PDFs fixture mínimos.
+- [x] Crear puerto `PdfReader` en `app/application/ports/pdf_reader.py`.
+- [x] Implementar adaptador con PyMuPDF:
+  - [x] contar páginas;
+  - [x] extraer texto por página;
+  - [x] extraer bloques con coordenadas si es viable;
+  - [x] detectar imágenes por página.
+- [x] Implementar clasificador `PdfKind`:
+  - [x] `DIGITAL`;
+  - [x] `HYBRID`;
+  - [x] `SCANNED`;
+  - [x] `EMBEDDED_XML`.
+- [x] Implementar renderizado básico de páginas a imagen.
+- [x] Añadir tests con PDFs fixture mínimos.
 
 ## Resultado verificable
 
@@ -239,28 +239,28 @@ Dado un PDF, el sistema informa tipo, páginas, texto extraíble y si necesita O
 
 **Objetivo:** extraer facturas con texto real sin OCR.
 
-**Estado:** Pendiente
+**Estado:** Hecho
 
 ## Tareas
 
-- [ ] Crear representación de documento normalizado:
-  - [ ] páginas;
-  - [ ] bloques;
-  - [ ] texto;
-  - [ ] coordenadas;
-  - [ ] fuente de extracción.
-- [ ] Crear extractor de candidatos por patrones:
-  - [ ] número de factura;
-  - [ ] fecha;
-  - [ ] CIF/NIF/NIE;
-  - [ ] razón social;
-  - [ ] base imponible;
-  - [ ] IVA;
-  - [ ] total.
-- [ ] Añadir heurísticas para emisor vs cliente.
-- [ ] Vincular candidatos con evidencias.
-- [ ] Pasar candidatos por validadores B2.
-- [ ] Añadir tests con facturas digitales.
+- [x] Crear representación de documento normalizado:
+  - [x] páginas;
+  - [x] bloques;
+  - [x] texto;
+  - [x] coordenadas;
+  - [x] fuente de extracción.
+- [x] Crear extractor de candidatos por patrones:
+  - [x] número de factura;
+  - [x] fecha;
+  - [x] CIF/NIF/NIE;
+  - [x] razón social;
+  - [x] base imponible;
+  - [x] IVA;
+  - [x] total.
+- [x] Añadir heurísticas para emisor vs cliente.
+- [x] Vincular candidatos con evidencias.
+- [x] Pasar candidatos por validadores B2.
+- [x] Añadir tests con facturas digitales.
 
 ## Resultado verificable
 
@@ -272,6 +272,19 @@ Una factura digital sencilla devuelve JSON real con campos principales y evidenc
 - Agente B: patrones de identificación fiscal/fechas.
 - Agente C: patrones de importes/IVA/totales.
 - Agente D: evidencias y tests.
+
+## Notas de implementación
+
+- El documento normalizado (`NormalizedDocument`, `NormalizedPage`, `NormalizedBlock`)
+  se crea a partir de los `TextBlock` del `PdfReader` de B3.
+- Los candidatos se extraen mediante regex y heurísticas de proximidad en
+  `extract_candidates.py`. Los campos incluyen número de factura, fecha,
+  CIF/NIF/NIE de emisor/cliente, razón social, líneas de IVA y totales.
+- Las heurísticas de emisor/cliente usan posición relativa a palabras clave
+  (`EMISOR`, `CLIENTE`) en los bloques de texto.
+- El pipeline digital valida con los validadores de B2 (totales, tax_id).
+- Los tests usan PDFs sintéticos generados con PyMuPDF — sin datos reales.
+- Extensible para B8 (resolución de campos) sin cambios en la arquitectura.
 
 ---
 
@@ -369,26 +382,35 @@ Una factura con varios tipos de IVA genera `tax_lines[]` correctas.
 
 **Objetivo:** fusionar candidatos de XML, PDF digital, OCR y layout en una factura final coherente.
 
-**Estado:** Pendiente
+**Estado:** Hecho
 
 ## Tareas
 
-- [ ] Definir modelo `CandidateField`.
-- [ ] Definir prioridades de fuentes:
-  - [ ] XML;
-  - [ ] texto digital;
-  - [ ] OCR/layout;
-  - [ ] VLM.
-- [ ] Resolver conflictos entre candidatos.
-- [ ] Calcular confianza por campo.
-- [ ] Calcular confianza global.
-- [ ] Generar `needs_review`.
-- [ ] Asociar evidencias a cada campo final.
-- [ ] Añadir tests de resolución de conflictos.
+- [x] Definir modelo `ResolvedField` y `ResolutionResult`.
+- [x] Definir prioridades de fuentes:
+  - [x] XML (prioridad 1);
+  - [x] texto digital (prioridad 2);
+  - [x] OCR/layout (prioridad 3/4);
+  - [x] VLM (prioridad 5).
+- [x] Resolver conflictos entre candidatos (prioridad por fuente, luego mayor confianza).
+- [x] Calcular confianza por campo.
+- [x] Calcular confianza global (promedio de confidences no nulas).
+- [x] Generar `needs_review` (solo campos no cero bajo umbral 0.7).
+- [x] Asociar evidencias a cada campo final via `build_all_evidences()`.
+- [x] Añadir tests de resolución de conflictos (40 tests, todos pasando).
+- [x] Integrar en `resolve_document()` para uso en pipelines futuros.
 
 ## Resultado verificable
 
 El sistema puede recibir varios candidatos para un mismo campo y escoger el mejor con explicación, confianza y warning si hay duda.
+
+## Notas de implementación
+
+- `Candidate` en B4 no tiene atributo `source` propio; la fuente se extrae de `Candidate.block.source`. Este diseño permite que un mismo candidato tenga contexto de fuente sin modificar el modelo de B4.
+- La función `needs_review()` no incluye campos con confianza 0 (ausentes) porque ya se manejan como errores en el pipeline.
+- `adjust_confidence_for_tax_id()` reduce la confianza al 50% cuando el validador B2 rechaza el tax_id.
+- El módulo es extensible: para añadir soporte OCR, solo hay que generar `NormalizedBlock` con `source=ExtractionSource.OCR` desde el motor OCR.
+- Tests con candidatos sintéticos — sin facturas reales.
 
 ## Puede hacerlo en paralelo
 
@@ -667,14 +689,14 @@ Usar esta tabla para mantener visibilidad del avance.
 | B0 Fundaciones | Hecho | Agente | Estructura base, `pyproject.toml`, README, `.env.example`, pytest y ruff configurados. Verificado con `python -m pytest` y `python -m ruff check .`. |
 | B1 Contrato API + schema | Hecho | Agente | Schemas Pydantic, endpoint dummy, tests de contrato y `docs/invoice_schema.md`. Verificado con `python -m pytest` y `python -m ruff check .`. |
 | B2 Dominio + validadores | Hecho | Agente | Normalización monetaria, CIF/NIF/NIE, fechas, totales/IVA/retenciones y warnings de dominio. Verificado con `python -m pytest` y `python -m ruff check .`. |
-| B3 Infraestructura PDF | Pendiente | — | Siguiente bloque recomendado para Iteración 2. |
-| B4 Pipeline digital | Pendiente | — | — |
+| B3 Infraestructura PDF | Hecho | Agente | Puerto PdfReader con PyMuPDF, clasificador PdfKind (DIGITAL/HYBRID/SCANNED/EMBEDDED_XML), renderizado a imagen, tests con fixtures sintéticas. Verificado con `python -m pytest` y `python -m ruff check .`. |
+| B4 Pipeline digital | Hecho | Agente | Normalizado, extractores por patrones (número, fecha, CIF/NIF/NIE, razón social, IVA, totales), heurísticas emisor/cliente, evidencias, validación B2, tests con fixtures sintéticas. Verificado con `python -m pytest` y `python -m ruff check .`. |
 | B5 XML embebido | Pendiente | — | — |
 | B6 OCR/renderizado | Pendiente | — | — |
 | B7 Layout/tablas | Pendiente | — | — |
-| B8 Resolución/confianza/evidencias | Pendiente | — | — |
+| B8 Resolución/confianza/evidencias | Hecho | Agente | ResolvedField, ResolutionResult, SourcePriority, resolve_field, resolve_document, adjust_confidence_for_tax_id, 40 tests. Listo para B5/B6/B9. |
 | B9 VLM local | Pendiente | — | — |
-| B10 Evaluación/benchmark | Pendiente | — | — |
+| B10 Evaluación/benchmark | Hecho | Agente | Estructura fixtures (digital/hybrid/scanned/expected_json), ground truth sintético seguro, script evaluate_extraction.py con métricas por campo (exact match, fuzzy, tolerancia), tests del evaluador (24 tests). Documentación en docs/evaluation.md. Verificado con `python -m pytest` (125 passed) y `python -m ruff check .` (All checks passed). |
 | B11 Despliegue local | Pendiente | — | — |
 | B12 Observabilidad/operación | Pendiente | — | — |
 
