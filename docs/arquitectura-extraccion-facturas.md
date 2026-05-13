@@ -10,6 +10,19 @@ Usaremos:
 
 La IA local no será la única fuente de verdad. Se usará como apoyo para casos ambiguos, pero todos los datos extraídos deberán pasar por validadores de dominio.
 
+## Decisiones cerradas para MVP-1
+
+| Tema | Decisión |
+|---|---|
+| Alcance | API FastAPI, schema JSON estable, validadores de dominio, PDF digital, OCR básico para escaneados simples, evidencias y confianza por campo. |
+| Campos obligatorios | Fecha de factura, número de factura, razón social y CIF del emisor, razón social y CIF del cliente, líneas de IVA/base/importe, base imponible total y total factura. |
+| Varios IVAs | Los porcentajes de IVA, importes de IVA y bases imponibles deben ir en una lista conservando el orden detectado en factura. |
+| Campos optativos | Adelantos y retenciones. |
+| Datos de prueba | Se usará estructura de fixtures, pero las facturas PDF/XML/imagen no se subirán a git. |
+| Persistencia | No guardar facturas ni resultados por defecto; procesar y devolver JSON. |
+| Hardware objetivo | NVIDIA RTX 5070 Ti, con posibilidad de ejecutar también en RTX 5090. |
+| Ruta inicial | Empezar por B0, B1 y B2: fundaciones, contrato/schema y validadores. |
+
 ## Stack recomendado
 
 | Área | Tecnología |
@@ -24,6 +37,15 @@ La IA local no será la única fuente de verdad. Se usará como apoyo para casos
 | Tests | pytest |
 | Calidad | ruff, mypy, pre-commit |
 | Contenedores | Docker / Docker Compose |
+
+## Hardware objetivo
+
+El entorno objetivo para OCR/VLM tendrá GPU NVIDIA:
+
+- GPU principal prevista: **RTX 5070 Ti**.
+- GPU alternativa/superior: **RTX 5090**.
+- El MVP debe poder arrancar sin VLM en producción; el VLM local queda fuera del MVP inicial.
+- OCR básico debe poder integrarse primero de forma simple y después optimizarse para GPU si las mediciones lo justifican.
 
 ## Estructura de carpetas propuesta
 
@@ -162,6 +184,15 @@ include_evidence: true
 include_debug: false
 ```
 
+Política de persistencia por defecto:
+
+- no guardar facturas recibidas;
+- no guardar imágenes renderizadas;
+- no guardar resultados en base de datos;
+- usar temporales solo durante la request;
+- devolver únicamente la respuesta JSON;
+- activar artefactos de debug solo si se añade un modo explícito y controlado.
+
 Respuesta esperada:
 
 ```json
@@ -218,6 +249,61 @@ customer.tax_id
 invoice_data.number
 invoice_data.issue_date
 invoice_data.due_date
+tax_lines[].tax_rate
+tax_lines[].tax_base
+tax_lines[].tax_amount
+totals.net_amount
+totals.tax_amount
+totals.gross_amount
+```
+
+## Contrato mínimo de campos para MVP-1
+
+Campos obligatorios:
+
+| Campo conceptual | Ubicación sugerida en JSON | Notas |
+|---|---|---|
+| Fecha de factura | `invoice_data.issue_date` | Formato ISO recomendado: `YYYY-MM-DD`. |
+| Número de factura | `invoice_data.number` | Texto, no número. Puede contener prefijos o barras. |
+| Razón social emisor | `supplier.legal_name` | Debe distinguirse del cliente. |
+| CIF/NIF emisor | `supplier.tax_id` | Validar con reglas de dominio. |
+| Razón social cliente | `customer.legal_name` | Puede tener menor confianza si el layout es ambiguo. |
+| CIF/NIF cliente | `customer.tax_id` | Validar con reglas de dominio. |
+| IVA aplicado | `tax_lines[].tax_rate` | Lista ordenada si hay varios tipos. |
+| Importe de IVA | `tax_lines[].tax_amount` | Lista ordenada y asociada al tipo correspondiente. |
+| Base imponible | `tax_lines[].tax_base` y `totals.net_amount` | Por línea fiscal y total agregado. |
+| Total factura | `totals.gross_amount` | Debe cuadrar con bases, IVA, adelantos y retenciones. |
+
+Campos optativos:
+
+| Campo conceptual | Ubicación sugerida en JSON | Notas |
+|---|---|---|
+| Adelantos | `totals.advance_amount` | Puede ser `null` o `0` si no aparece. |
+| Retenciones | `totals.withholding_amount` | Debe restar del total si aplica. |
+
+Regla para varios IVAs:
+
+```txt
+tax_lines mantiene el orden en el que se detectan las líneas fiscales en la factura.
+Cada elemento agrupa: porcentaje, base imponible e importe de IVA.
+```
+
+Ejemplo conceptual:
+
+```json
+{
+  "tax_lines": [
+    {"tax_rate": "21", "tax_base": "100.00", "tax_amount": "21.00"},
+    {"tax_rate": "10", "tax_base": "50.00", "tax_amount": "5.00"}
+  ],
+  "totals": {
+    "net_amount": "150.00",
+    "tax_amount": "26.00",
+    "advance_amount": null,
+    "withholding_amount": null,
+    "gross_amount": "176.00"
+  }
+}
 ```
 
 ## Capas de extracción
@@ -314,7 +400,8 @@ fecha válida
 moneda válida
 base * iva = cuota
 suma cuotas = iva_total
-base_total + iva_total - retenciones = total_factura
+base_total + iva_total - retenciones - adelantos = total_factura
+tolerancia decimal: 0.01 €
 ```
 
 Ejemplo conceptual:

@@ -10,6 +10,19 @@ Este documento convierte la arquitectura base en una ruta de tareas accionable. 
 - Si una tarea crece demasiado, dividirla antes de implementarla.
 - Si se descubre una decisión arquitectónica nueva, actualizar también `docs/arquitectura-extraccion-facturas.md`.
 
+## Decisiones cerradas antes de programar
+
+| Tema | Decisión para MVP-1 |
+|---|---|
+| Alcance | API, schema estable, validadores, PDF digital, OCR básico, evidencias, confianza y evaluación inicial. |
+| Obligatorios | Fecha, número, razón social y CIF de emisor, razón social y CIF de cliente, IVA/base/importe por línea fiscal, base total y total factura. |
+| Varios IVAs | Usar lista ordenada: cada elemento conserva porcentaje, base e importe de IVA. |
+| Optativos | Adelantos y retenciones. |
+| Fixtures | Usar estructura de fixtures, pero no subir facturas PDF/XML/imagen a git. |
+| Persistencia | No guardar documentos ni resultados por defecto; solo devolver JSON. |
+| Hardware | NVIDIA RTX 5070 Ti, con posibilidad de RTX 5090. |
+| Ruta inicial | B0 → B1 → B2; después B3/B4 y B6 según avance. |
+
 ## Resumen de dependencias
 
 ```txt
@@ -115,6 +128,17 @@ debe ejecutarse correctamente aunque todavía no exista lógica real de extracci
   - [ ] `Evidence`
   - [ ] `ConfidenceReport`
 - [ ] Definir campos obligatorios y opcionales.
+  - [ ] Obligatorio: fecha de factura.
+  - [ ] Obligatorio: número de factura.
+  - [ ] Obligatorio: razón social del emisor.
+  - [ ] Obligatorio: CIF/NIF del emisor.
+  - [ ] Obligatorio: razón social del cliente.
+  - [ ] Obligatorio: CIF/NIF del cliente.
+  - [ ] Obligatorio: lista ordenada de líneas fiscales con porcentaje IVA, base imponible e importe IVA.
+  - [ ] Obligatorio: base imponible total.
+  - [ ] Obligatorio: total factura.
+  - [ ] Optativo: adelantos.
+  - [ ] Optativo: retenciones.
 - [ ] Definir formato de errores y warnings.
 - [ ] Definir contrato inicial del endpoint:
   - [ ] `POST /api/v1/invoices/extract`
@@ -424,6 +448,8 @@ El VLM puede proponer valores, pero el sistema no acepta valores inválidos ni i
   - [ ] `tests/fixtures/scanned`;
   - [ ] `tests/fixtures/expected_json`.
 - [ ] Crear formato de ground truth.
+- [ ] Mantener facturas PDF/XML/imagen fuera de git.
+- [ ] Versionar solo datos seguros no sensibles, por ejemplo `expected_json` sintético o plantillas sin datos reales.
 - [ ] Crear script `scripts/evaluate_extraction.py`.
 - [ ] Medir precisión por campo:
   - [ ] CIF/NIF exact match;
@@ -585,6 +611,28 @@ Cuando una factura falla o genera baja confianza, podemos saber en qué etapa oc
 - Evidencias por campo.
 - Confianza por campo.
 - Fixtures y evaluación inicial.
+- Sin persistencia de facturas ni resultados por defecto; solo respuesta JSON.
+
+## Campos obligatorios del MVP
+
+- Fecha de factura.
+- Número de factura.
+- Razón social del emisor.
+- CIF/NIF del emisor.
+- Razón social del cliente.
+- CIF/NIF del cliente.
+- Porcentaje de IVA aplicado por línea fiscal.
+- Importe de IVA por línea fiscal.
+- Base imponible por línea fiscal.
+- Base imponible total.
+- Total factura.
+
+Si hay varios IVAs, se representan como lista ordenada, conservando el orden detectado en la factura.
+
+## Campos optativos del MVP
+
+- Adelantos.
+- Retenciones.
 
 ## Fuera del MVP
 
@@ -593,6 +641,7 @@ Cuando una factura falla o genera baja confianza, podemos saber en qué etapa oc
 - UI de revisión humana.
 - Soporte completo de todos los formatos XML europeos.
 - Optimización avanzada de GPU.
+- Persistencia en base de datos.
 
 ## Criterio de aceptación del MVP
 
@@ -604,6 +653,7 @@ El MVP se considera listo cuando:
 - [ ] marca campos dudosos con `needs_review`;
 - [ ] incluye evidencias para campos principales;
 - [ ] rechaza o advierte totales que no cuadran;
+- [ ] no persiste facturas ni resultados por defecto;
 - [ ] puede ejecutarse localmente sin servicios externos.
 
 ---
