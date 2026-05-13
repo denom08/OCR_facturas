@@ -47,6 +47,12 @@ from app.domain.services.totals_validator import (
 from app.domain.services.totals_validator import (
     validate_totals,
 )
+from app.shared.logging import (
+    TimingCollector,
+    log_debug,
+    log_warning,
+    stage_timer,
+)
 from app.shared.money import normalize_money
 
 # ---------------------------------------------------------------------------
@@ -136,9 +142,20 @@ def process_digital_invoice(
 ) -> InvoiceResponse:
     """Procesa un PDF digital y devuelve un InvoiceResponse validado."""
 
+    # Timing collector — para incluir en debug si include_debug=True
+    timing = TimingCollector()
+    timing.start()
+
     # 1. Clasificar — rechazamos si no es digital
-    kind = pdf_reader.classify(pdf_source)
+    with stage_timer(timing, "pdf_classify"):
+        kind = pdf_reader.classify(pdf_source)
+
     if kind not in (PdfKind.DIGITAL, PdfKind.HYBRID):
+        log_warning(
+            "digital_pipeline_rejected",
+            reason="unsupported_kind",
+            kind=kind.value,
+        )
         return InvoiceResponse(
             status="error",
             invoice=None,
@@ -155,14 +172,18 @@ def process_digital_invoice(
                 )
             ],
             evidence={},
-            debug={"kind": kind.value} if include_debug else None,
+            debug={"stage": "digital_pipeline", "kind": kind.value}
+            if include_debug
+            else None,
         )
 
     # 2. Normalizar documento
-    doc = _build_normalized_document(pdf_reader, pdf_source)
+    with stage_timer(timing, "normalize_document"):
+        doc = _build_normalized_document(pdf_reader, pdf_source)
 
     # 3. Extraer candidatos
-    candidates = extract_candidates(doc)
+    with stage_timer(timing, "extract_candidates"):
+        candidates = extract_candidates(doc)
 
     # 4. Recoger mejores candidatos por campo
     fields_to_resolve = [
@@ -375,21 +396,22 @@ def process_digital_invoice(
     ) / 3
 
     # 6. Validar totales con validador B2
-    domain_tax_lines = [
-        DomainTaxLineAmounts(
-            tax_rate=Decimal(tl.tax_rate),
-            tax_base=tl.tax_base,
-            tax_amount=tl.tax_amount,
+    with stage_timer(timing, "validate_totals"):
+        domain_tax_lines = [
+            DomainTaxLineAmounts(
+                tax_rate=Decimal(tl.tax_rate),
+                tax_base=tl.tax_base,
+                tax_amount=tl.tax_amount,
+            )
+            for tl in tax_lines
+        ]
+        domain_totals = DomainInvoiceTotals(
+            net_amount=totals.net_amount,
+            tax_amount=totals.tax_amount,
+            gross_amount=totals.gross_amount,
         )
-        for tl in tax_lines
-    ]
-    domain_totals = DomainInvoiceTotals(
-        net_amount=totals.net_amount,
-        tax_amount=totals.tax_amount,
-        gross_amount=totals.gross_amount,
-    )
-    domain_warnings = validate_totals(domain_tax_lines, domain_totals)
-    warnings.extend(w.message for w in domain_warnings)
+        domain_warnings = validate_totals(domain_tax_lines, domain_totals)
+        warnings.extend(w.message for w in domain_warnings)
 
     # 7. Construir Invoice si hay datos mínimos
     if inv_num and inv_date and sup_tax_id and cust_tax_id:
@@ -432,7 +454,16 @@ def process_digital_invoice(
             "kind": kind.value,
             "candidate_count": len(candidates.candidates),
             "resolved_fields": list(resolved.keys()),
+            "timings": timing.to_dict(),
         }
+
+    log_debug(
+        "digital_pipeline_completed",
+        status="ok" if invoice else "error",
+        candidate_count=len(candidates.candidates),
+        resolved_count=len(resolved),
+        global_score=global_score,
+    )
 
     return InvoiceResponse(
         status="ok" if invoice else "error",

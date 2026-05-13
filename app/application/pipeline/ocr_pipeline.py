@@ -50,6 +50,12 @@ from app.domain.services.totals_validator import (
 from app.domain.services.totals_validator import (
     validate_totals,
 )
+from app.shared.logging import (
+    TimingCollector,
+    log_debug,
+    log_warning,
+    stage_timer,
+)
 from app.shared.money import normalize_money
 
 logger = logging.getLogger(__name__)
@@ -192,10 +198,20 @@ def process_scanned_invoice(
         errors=[ApiError(code="ocr_unavailable", ...)]
         warnings=["PaddleOCR no está instalado. Instala: pip install ocr-facturas[paddleocr]"]
     """
+    # Timing collector para todo el pipeline
+    timing = TimingCollector()
+    timing.start()
+
     # 1. Clasificar — requerimos SCANNED o HYBRID, o force_ocr
-    kind = pdf_reader.classify(pdf_source)
+    with stage_timer(timing, "pdf_classify"):
+        kind = pdf_reader.classify(pdf_source)
 
     if not force_ocr and kind not in (PdfKind.SCANNED, PdfKind.HYBRID):
+        log_warning(
+            "ocr_pipeline_rejected",
+            reason="unsupported_kind",
+            kind=kind.value,
+        )
         return InvoiceResponse(
             status="error",
             invoice=None,
@@ -245,30 +261,34 @@ def process_scanned_invoice(
         )
 
     # 3. OCR de todas las páginas
-    try:
-        doc = _ocr_pages(pdf_reader, pdf_source, ocr_engine, dpi)
-    except OcrUnavailableError:
-        return InvoiceResponse(
-            status="error",
-            invoice=None,
-            confidence=ConfidenceReport(global_score=0.0),
-            warnings=[
-                "El motor OCR no está disponible durante el procesamiento."
-            ],
-            errors=[
-                ApiError(
-                    code="ocr_unavailable",
-                    message="Error al ejecutar OCR. Comprueba la instalación.",
-                    field="file",
-                )
-            ],
-            evidence={},
-            debug={
-                "stage": "ocr_pipeline",
-                "kind": kind.value,
-                "engine": ocr_engine.name(),
-            } if include_debug else None,
-        )
+    with stage_timer(timing, "ocr", engine=ocr_engine.name(), dpi=dpi):
+        try:
+            doc = _ocr_pages(pdf_reader, pdf_source, ocr_engine, dpi)
+        except OcrUnavailableError:
+            timing.add_stage("ocr", 0.0, error="ocr_unavailable")
+            log_warning("ocr_unavailable", engine=ocr_engine.name())
+            return InvoiceResponse(
+                status="error",
+                invoice=None,
+                confidence=ConfidenceReport(global_score=0.0),
+                warnings=[
+                    "El motor OCR no está disponible durante el procesamiento."
+                ],
+                errors=[
+                    ApiError(
+                        code="ocr_unavailable",
+                        message="Error al ejecutar OCR. Comprueba la instalación.",
+                        field="file",
+                    )
+                ],
+                evidence={},
+                debug={
+                    "stage": "ocr_pipeline",
+                    "kind": kind.value,
+                    "engine": ocr_engine.name(),
+                    "timings": timing.to_dict(),
+                } if include_debug else None,
+            )
 
     if not doc.all_blocks:
         return InvoiceResponse(
@@ -292,7 +312,8 @@ def process_scanned_invoice(
         )
 
     # 4. Extraer candidatos usando los patrones de B4
-    candidates = extract_candidates(doc)
+    with stage_timer(timing, "extract_candidates"):
+        candidates = extract_candidates(doc)
 
     # 5. Recoger mejores candidatos por campo (misma lógica que digital_pipeline)
     fields_to_resolve = [
@@ -490,21 +511,22 @@ def process_scanned_invoice(
     ) / 3
 
     # 7. Validar totales con B2
-    domain_tax_lines = [
-        DomainTaxLineAmounts(
-            tax_rate=Decimal(tl.tax_rate),
-            tax_base=tl.tax_base,
-            tax_amount=tl.tax_amount,
+    with stage_timer(timing, "validate_totals"):
+        domain_tax_lines = [
+            DomainTaxLineAmounts(
+                tax_rate=Decimal(tl.tax_rate),
+                tax_base=tl.tax_base,
+                tax_amount=tl.tax_amount,
+            )
+            for tl in tax_lines
+        ]
+        domain_totals = DomainInvoiceTotals(
+            net_amount=totals.net_amount,
+            tax_amount=totals.tax_amount,
+            gross_amount=totals.gross_amount,
         )
-        for tl in tax_lines
-    ]
-    domain_totals = DomainInvoiceTotals(
-        net_amount=totals.net_amount,
-        tax_amount=totals.tax_amount,
-        gross_amount=totals.gross_amount,
-    )
-    domain_warnings = validate_totals(domain_tax_lines, domain_totals)
-    warnings.extend(w.message for w in domain_warnings)
+        domain_warnings = validate_totals(domain_tax_lines, domain_totals)
+        warnings.extend(w.message for w in domain_warnings)
 
     # 8. Construir Invoice
     if inv_num and inv_date and sup_tax_id and cust_tax_id:
@@ -548,7 +570,17 @@ def process_scanned_invoice(
             "page_count": pdf_reader.page_count(pdf_source),
             "candidate_count": len(candidates.candidates),
             "resolved_fields": list(resolved.keys()),
+            "timings": timing.to_dict(),
         }
+
+    log_debug(
+        "ocr_pipeline_completed",
+        status="ok" if invoice else "error",
+        kind=kind.value,
+        candidate_count=len(candidates.candidates),
+        resolved_count=len(resolved),
+        global_score=global_score,
+    )
 
     return InvoiceResponse(
         status="ok" if invoice else "error",

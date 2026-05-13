@@ -34,6 +34,12 @@ from app.domain.services.totals_validator import (
 from app.domain.services.totals_validator import (
     validate_totals,
 )
+from app.shared.logging import (
+    TimingCollector,
+    log_debug,
+    log_warning,
+    stage_timer,
+)
 
 
 def _build_tax_line(rate: str, base: Decimal, amount: Decimal) -> TaxLine:
@@ -196,10 +202,16 @@ def process_xml_invoice(
     4. Validar totales con B2
     5. Devolver InvoiceResponse con evidencia y confianza alta
     """
+    # Timing collector
+    timing = TimingCollector()
+    timing.start()
+
     # 1. Extraer XMLs embebidos
-    xmls = xml_extractor.extract_embedded_xmls(pdf_source)
+    with stage_timer(timing, "xml_extract"):
+        xmls = xml_extractor.extract_embedded_xmls(pdf_source)
 
     if not xmls:
+        log_warning("xml_pipeline_no_xml_found")
         return InvoiceResponse(
             status="error",
             invoice=None,
@@ -217,25 +229,13 @@ def process_xml_invoice(
         )
 
     # 2. Intentar parsear con cada parser
-    parsed_data: ParsedInvoiceData | None = None
-    used_format: XmlFormat = XmlFormat.UNKNOWN
+    with stage_timer(timing, "xml_parse", xml_count=len(xmls)):
+        parsed_data: ParsedInvoiceData | None = None
+        used_format: XmlFormat = XmlFormat.UNKNOWN
 
-    for xml_obj in xmls:
-        for parser in parsers:
-            if parser.can_parse(xml_obj.format):
-                result = parser.parse(xml_obj.raw_xml)
-                if result is not None:
-                    parsed_data = result
-                    used_format = xml_obj.format
-                    break
-        if parsed_data is not None:
-            break
-
-    # 3. Si nadie pudo, intentar con formato unknown
-    if parsed_data is None:
         for xml_obj in xmls:
             for parser in parsers:
-                if parser.can_parse(XmlFormat.UNKNOWN):
+                if parser.can_parse(xml_obj.format):
                     result = parser.parse(xml_obj.raw_xml)
                     if result is not None:
                         parsed_data = result
@@ -243,6 +243,19 @@ def process_xml_invoice(
                         break
             if parsed_data is not None:
                 break
+
+        # 3. Si nadie pudo, intentar con formato unknown
+        if parsed_data is None:
+            for xml_obj in xmls:
+                for parser in parsers:
+                    if parser.can_parse(XmlFormat.UNKNOWN):
+                        result = parser.parse(xml_obj.raw_xml)
+                        if result is not None:
+                            parsed_data = result
+                            used_format = xml_obj.format
+                            break
+                if parsed_data is not None:
+                    break
 
     if parsed_data is None:
         return InvoiceResponse(
@@ -286,23 +299,24 @@ def process_xml_invoice(
         )
 
     # 5. Validar totales con B2
-    domain_tax_lines = [
-        DomainTaxLineAmounts(
-            tax_rate=tl.tax_rate,
-            tax_base=tl.tax_base,
-            tax_amount=tl.tax_amount,
+    with stage_timer(timing, "validate_totals"):
+        domain_tax_lines = [
+            DomainTaxLineAmounts(
+                tax_rate=tl.tax_rate,
+                tax_base=tl.tax_base,
+                tax_amount=tl.tax_amount,
+            )
+            for tl in invoice.tax_lines
+        ]
+        domain_totals = DomainInvoiceTotals(
+            net_amount=invoice.totals.net_amount,
+            tax_amount=invoice.totals.tax_amount,
+            gross_amount=invoice.totals.gross_amount,
+            advance_amount=invoice.totals.advance_amount,
+            withholding_amount=invoice.totals.withholding_amount,
         )
-        for tl in invoice.tax_lines
-    ]
-    domain_totals = DomainInvoiceTotals(
-        net_amount=invoice.totals.net_amount,
-        tax_amount=invoice.totals.tax_amount,
-        gross_amount=invoice.totals.gross_amount,
-        advance_amount=invoice.totals.advance_amount,
-        withholding_amount=invoice.totals.withholding_amount,
-    )
-    domain_warnings = validate_totals(domain_tax_lines, domain_totals)
-    map_warnings.extend(w.message for w in domain_warnings)
+        domain_warnings = validate_totals(domain_tax_lines, domain_totals)
+        map_warnings.extend(w.message for w in domain_warnings)
 
     # 6. Calcular confianza (XML = alta)
     all_warnings = map_warnings
@@ -334,6 +348,14 @@ def process_xml_invoice(
 
     needs_review = [f for f, c in field_confidence.items() if c < 0.7]
 
+    log_debug(
+        "xml_pipeline_completed",
+        status="ok",
+        format=used_format.value,
+        xml_count=len(xmls),
+        global_score=global_score,
+    )
+
     return InvoiceResponse(
         status="ok",
         invoice=invoice,
@@ -349,5 +371,6 @@ def process_xml_invoice(
             "stage": "xml_pipeline",
             "format": used_format.value,
             "xml_count": len(xmls),
+            "timings": timing.to_dict(),
         } if include_debug else None,
     )
