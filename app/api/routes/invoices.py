@@ -1,8 +1,13 @@
+"""Rutas FastAPI para extracción de facturas."""
+
+from io import BytesIO
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
-from app.api.schemas.invoices import InvoiceResponse, build_dummy_invoice_response
+from app.api.schemas.invoices import InvoiceResponse
+from app.application.pipeline.digital_pipeline import process_digital_invoice
+from app.infrastructure.pdf.pymupdf_reader import PyMuPdfReader
 
 router = APIRouter(prefix="/api/v1/invoices", tags=["invoices"])
 
@@ -14,7 +19,7 @@ async def extract_invoice(
     include_evidence: Annotated[bool, Form()] = True,
     include_debug: Annotated[bool, Form()] = False,
 ) -> InvoiceResponse:
-    """Recibe una factura PDF y devuelve una respuesta dummy conforme al contrato."""
+    """Recibe una factura PDF y devuelve una respuesta estructurada."""
     if file.content_type != "application/pdf":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -25,7 +30,15 @@ async def extract_invoice(
             },
         )
 
-    return build_dummy_invoice_response(
+    # Leer el contenido del PDF
+    content = await file.read()
+    pdf_source = BytesIO(content)
+
+    # Usar el pipeline digital
+    reader = PyMuPdfReader()
+    return process_digital_invoice(
+        pdf_reader=reader,
+        pdf_source=pdf_source,
         include_evidence=include_evidence,
         include_debug=include_debug or force_ocr,
     )
