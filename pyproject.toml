@@ -22,6 +22,21 @@ dev = [
     "pytest>=8.2,<9.0",
     "ruff>=0.4,<1.0",
 ]
+# PaddleOCR para OCR de PDFs escaneados.
+# Requiere PaddlePaddle (GPU o CPU) + modelos de detección y reconocimiento.
+# Install GPU:  pip install paddlepaddle-gpu (requiere NVIDIA GPU)
+# Install CPU:  pip install paddlepaddle
+# Los modelos se descargan automáticamente (~40MB).
+# Sin esta dependencia, el pipeline OCR responde con error controlado
+# y la API sigue funcionando para PDFs digitales y XML embebido.
+paddleocr = [
+    "pypaddleocr>=0.1",
+    # Meta-dependency note: we intentionally do NOT pin paddlepaddle-gpu here
+    # because GPU support is environment-specific (CUDA version, etc.).
+    # The user must install the appropriate PaddlePaddle variant for their
+    # hardware manually. PaddleOCR will raise a clear ImportError if the
+    # runtime dependency is missing.
+]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

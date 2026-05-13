@@ -26,6 +26,7 @@ class NormalizedBlock:
     bbox: tuple[float, float, float, float]  # (x0, y0, x1, y1)
     page: int
     source: ExtractionSource
+    confidence: float = 1.0  # 0.0-1.0; para DIGITAL_TEXT vale 1.0
 
 
 @dataclass(frozen=True)

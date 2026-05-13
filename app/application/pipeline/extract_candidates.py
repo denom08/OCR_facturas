@@ -318,6 +318,7 @@ def _extract_company_names(cs: CandidateSet, blocks: list[NormalizedBlock]) -> N
 
     supplier_candidates: list[tuple[str, float, NormalizedBlock]] = []
     customer_candidates: list[tuple[str, float, NormalizedBlock]] = []
+    section: str | None = None
 
     for block in blocks:
         text = block.text
