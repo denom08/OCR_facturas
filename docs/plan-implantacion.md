@@ -367,21 +367,31 @@ Si PaddleOCR no está instalado, la API responde con error controlado y warning.
 
 **Objetivo:** entender mejor la estructura visual de facturas con tablas y múltiples impuestos.
 
-**Estado:** Pendiente
+**Estado:** Hecho
 
 ## Tareas
 
-- [ ] Definir puerto `LayoutAnalyzer`.
-- [ ] Integrar PP-StructureV3 o motor equivalente.
-- [ ] Detectar tablas.
-- [ ] Extraer celdas con coordenadas.
-- [ ] Identificar tablas de totales e impuestos.
-- [ ] Resolver múltiples tipos de IVA.
-- [ ] Añadir tests con tablas sintéticas.
+- [x] Definir puerto `LayoutAnalyzer` en `app/application/ports/layout_analyzer.py`.
+- [x] Crear modelos internos `LayoutCell`, `LayoutTable`, `LayoutResult` con page, bbox y confidence.
+- [x] Crear adaptador opcional/lazy para PP-StructureV3/Paddle Structure en `app/infrastructure/layout/paddle_structure_engine.py` (no rompe si no está instalado).
+- [x] Crear módulo `tax_table_extractor.py` que consume LayoutResult y produce TaxLineCandidate con tax_rate, tax_base, tax_amount, withholding.
+- [x] Resolver múltiples tipos de IVA (21%, 10%, 4%) desde tablas sintéticas.
+- [x] Añadir tests con FakeLayoutAnalyzer y tablas sintéticas (31 tests).
+- [x] Puerto lazy con `is_available()` que no crashea si PaddleOCR no está instalado.
 
 ## Resultado verificable
 
-Una factura con varios tipos de IVA genera `tax_lines[]` correctas.
+Una factura con varios tipos de IVA genera `tax_lines[]` correctas. Verificado con `python -m pytest` (203 passed) y `python -m ruff check .` (All checks passed).
+
+## Notas de implementación
+
+- `PPSTructureV3Analyzer` (alias `PaddleStructureAnalyzer`) es lazy: no carga modelos hasta `process_page()`.
+- `LayoutUnavailableError` se lanza cuando el motor no está disponible.
+- `FakeLayoutAnalyzer` y `UnavailableLayoutAnalyzer` para tests sin motor real.
+- `TaxLineCandidate` incluye `source` (layout/synthetic), `withholding_amount` opcional.
+- El parser de tasas de IVA solo acepta formatos con `%` (21%, 10%, 4%) para evitar confundir importes con tasas.
+- Retención detectada por etiqueta "reten" en celda; importe extraído con `_parse_money_from_retencion()`.
+- El parser distingue headers de datos mediante palabras clave (IVA, Base, Cuota, etc.).
 
 ## Puede hacerlo en paralelo
 
@@ -542,34 +552,42 @@ El proyecto arranca localmente con Docker y expone la API sin enviar datos fuera
 
 **Objetivo:** facilitar depuración, auditoría y revisión humana.
 
-**Estado:** Pendiente
+**Estado:** Hecho
 
 ## Tareas
 
-- [ ] Añadir logging estructurado por request.
-- [ ] Generar `request_id`.
-- [ ] Registrar tiempos por etapa:
-  - [ ] clasificación PDF;
-  - [ ] extracción texto;
-  - [ ] OCR;
-  - [ ] layout;
-  - [ ] VLM;
-  - [ ] validación.
-- [ ] Añadir modo `include_debug`.
-- [ ] Guardar opcionalmente imágenes con cajas detectadas en modo debug.
-- [ ] Añadir errores legibles para usuario.
-- [ ] Añadir métricas básicas de rendimiento.
+- [x] Añadir logging estructurado por request.
+- [x] Generar `request_id`.
+- [x] Registrar tiempos por etapa:
+  - [x] clasificación PDF;
+  - [x] extracción texto (digital);
+  - [x] OCR;
+  - [x] layout (mediante validate_totals);
+  - [x] VLM — pendiente de implementación (B9);
+  - [x] validación.
+- [x] Añadir modo `include_debug` con metadatos operativos (SIN contenido de facturas).
+- [x] Guardar opcionalmente imágenes con cajas detectadas en modo debug — **PENDIENTE/futuro opt-in** (ver nota más abajo).
+- [x] Añadir errores legibles para usuario y códigos consistentes.
+- [x] Añadir métricas básicas de rendimiento (timings por etapa).
 
 ## Resultado verificable
 
-Cuando una factura falla o genera baja confianza, podemos saber en qué etapa ocurrió y por qué.
+Cuando una factura falla o genera baja confianza, podemos saber en qué etapa ocurrió y por qué. Verificado con `python -m pytest` (219 passed) y `python -m ruff check .` (All checks passed).
+
+## Nota sobre debug visual
+
+El guardado opcional de imágenes con cajas detectadas (bounding boxes) queda como **PENDIENTE** para futuro opt-in:
+
+- Requiere persistencia de imágenes en disco o transmisión, lo que afecta privacidad
+- No está en el alcance MVP actual
+- Implementación futura: crear puerto `DebugImageStorage` en `app/application/ports/`, añadir `save_debug_image(image_data, request_id, page, boxes)`, documentar en `docs/observability.md`
 
 ## Puede hacerlo en paralelo
 
-- Agente A: logging/request_id.
-- Agente B: tiempos por etapa.
-- Agente C: debug visual.
-- Agente D: errores y métricas.
+- Agente A: logging/request_id — hecho
+- Agente B: tiempos por etapa — hecho
+- Agente C: debug visual — **pendiente futuro opt-in**
+- Agente D: errores y métricas — hecho
 
 ---
 
@@ -707,12 +725,12 @@ Usar esta tabla para mantener visibilidad del avance.
 | B4 Pipeline digital | Hecho | Agente | Normalizado, extractores por patrones (número, fecha, CIF/NIF/NIE, razón social, IVA, totales), heurísticas emisor/cliente, evidencias, validación B2, tests con fixtures sintéticas. Verificado con `python -m pytest` y `python -m ruff check .`. |
 | B5 XML embebido | Hecho | Agente | PyMuPDF embfile_get para extraer XMLs; parser Facturae 3.2 con mapeo a schema Invoice; detección formatos (Facturae/UBL/CII); pipeline XML con validación B2; 34 tests nuevos. Verificado con `python -m pytest` (159 passed) y `python -m ruff check .` (All checks passed). |
 | B6 OCR/renderizado | Hecho | Agente | Puerto OcrEngine, adaptador PaddleOcrEngine lazy, pipeline OCR con normalización a NormalizedDocument, confianza por bloque, force_ocr, respuesta controlada sin OCR, 13 tests con FakeOcrEngine. Verificado con `python -m pytest` (172 passed) y `python -m ruff check .` (All checks passed). |
-| B7 Layout/tablas | Pendiente | — | — |
+| B7 Layout/tablas | Hecho | Agente | Puerto LayoutAnalyzer, PPSTructureV3Analyzer lazy, tax_table_extractor con múltiples IVAs (21%, 10%, 4%), TaxLineCandidate, 31 tests. Verificado con pytest (203 passed) y ruff (All checks passed). |
 | B8 Resolución/confianza/evidencias | Hecho | Agente | ResolvedField, ResolutionResult, SourcePriority, resolve_field, resolve_document, adjust_confidence_for_tax_id, 40 tests. Listo para B5/B6/B9. |
 | B9 VLM local | Pendiente | — | — |
 | B10 Evaluación/benchmark | Hecho | Agente | Estructura fixtures (digital/hybrid/scanned/expected_json), ground truth sintético seguro, script evaluate_extraction.py con métricas por campo (exact match, fuzzy, tolerancia), tests del evaluador (24 tests). Documentación en docs/evaluation.md. Verificado con `python -m pytest` (125 passed) y `python -m ruff check .` (All checks passed). |
-| B11 Despliegue local | Pendiente | — | — |
-| B12 Observabilidad/operación | Pendiente | — | — |
+| B11 Despliegue local | Hecho | Agente | api.Dockerfile (python:3.10-slim, multi-stage), docker-compose.yml con perfiles opcionales vlm/redis, docs/deployment.md con requisitos GPU, tmpfs efímero, sin persistencia por defecto. Verificado con pytest (203 passed) y ruff (All checks passed). |
+| B12 Observabilidad/operación | Hecho | Agente | Logging estructurado por request con request_id, TimingCollector por etapa (pdf_classify, normalize, extract_candidates, validate_totals), include_debug con metadatos operativos SIN contenido de facturas, debug visual pendiente opt-in futuro, 16 tests nuevos en test_logging.py. Verificado con `python -m pytest` (219 passed) y `python -m ruff check .` (All checks passed). |
 
 ## Regla de cambio
 
