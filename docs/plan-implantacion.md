@@ -449,32 +449,34 @@ El sistema puede recibir varios candidatos para un mismo campo y escoger el mejo
 
 **Objetivo:** usar Qwen2.5-VL local como apoyo cuando OCR/reglas no basten.
 
-**Estado:** Pendiente
+**Estado:** Hecho
 
 ## Tareas
 
-- [ ] Definir puerto `InvoiceExtractor` para modelos IA.
-- [ ] Elegir modo inicial de serving:
-  - [ ] Transformers directo para MVP; o
-  - [ ] vLLM si priorizamos servicio separado.
-- [ ] Crear prompt estricto con schema JSON.
-- [ ] Crear parser robusto de salida JSON.
-- [ ] Definir cuándo invocar VLM:
-  - [ ] campos obligatorios faltantes;
-  - [ ] baja confianza;
-  - [ ] factura escaneada compleja;
-  - [ ] tabla fiscal no resuelta.
-- [ ] Validar siempre la salida con B2 y B8.
-- [ ] Añadir tests con mocks del modelo.
+- [x] Definir puerto `InvoiceExtractor` para modelos IA.
+- [x] Elegir modo inicial de serving:
+  - [x] vLLM (interfaz OpenAI-compatible, lazy loading) — backend real opcional.
+- [x] Crear prompt estricto con schema JSON.
+- [x] Crear parser robusto de salida JSON.
+- [x] Definir cuándo invocar VLM:
+  - [x] campos obligatorios faltantes;
+  - [x] baja confianza (< 0.6 global);
+  - [x] factura escaneada compleja;
+  - [x] tabla fiscal no resuelta.
+- [x] Validar siempre la salida con B2 y B8.
+- [x] Añadir tests con mocks del modelo (FakeVlmExtractor, UnavailableVlmExtractor).
+- [x] Documentar configuración local y limitaciones en docs/deployment.md.
 
 ## Resultado verificable
 
-El VLM puede proponer valores, pero el sistema no acepta valores inválidos ni inventados sin evidencia o validación.
+El VLM puede proponer valores, pero el sistema no acepta valores inválidos ni inventados sin evidencia o validación. Verificado con `python -m pytest` (262 passed) y `python -m ruff check .` (All checks passed).
 
 ## Puede hacerlo en paralelo
 
 - Agente A: puerto y mock del extractor IA.
 - Agente B: prompt y schema de salida.
+- Agente C: integración local Qwen.
+- Agente D: reglas de invocación y tests.
 - Agente C: integración local Qwen.
 - Agente D: reglas de invocación y tests.
 
@@ -727,7 +729,7 @@ Usar esta tabla para mantener visibilidad del avance.
 | B6 OCR/renderizado | Hecho | Agente | Puerto OcrEngine, adaptador PaddleOcrEngine lazy, pipeline OCR con normalización a NormalizedDocument, confianza por bloque, force_ocr, respuesta controlada sin OCR, 13 tests con FakeOcrEngine. Verificado con `python -m pytest` (172 passed) y `python -m ruff check .` (All checks passed). |
 | B7 Layout/tablas | Hecho | Agente | Puerto LayoutAnalyzer, PPSTructureV3Analyzer lazy, tax_table_extractor con múltiples IVAs (21%, 10%, 4%), TaxLineCandidate, 31 tests. Verificado con pytest (203 passed) y ruff (All checks passed). |
 | B8 Resolución/confianza/evidencias | Hecho | Agente | ResolvedField, ResolutionResult, SourcePriority, resolve_field, resolve_document, adjust_confidence_for_tax_id, 40 tests. Listo para B5/B6/B9. |
-| B9 VLM local | Pendiente | — | — |
+| B9 VLM local | Hecho | Agente | Puerto InvoiceExtractor, QwenVlExtractor (vLLM/OpenAI interface, lazy), prompt/parser JSON robusto, reglas de invocación (missing_field, low_confidence, scanned, tax_unresolved), vlm_pipeline con invoke_vlm_if_needed, FakeVlmExtractor/UnavailableVlmExtractor, 43 tests. Backend real opcional/lazy. Verificado con pytest (262 passed) y ruff (All checks passed). |
 | B10 Evaluación/benchmark | Hecho | Agente | Estructura fixtures (digital/hybrid/scanned/expected_json), ground truth sintético seguro, script evaluate_extraction.py con métricas por campo (exact match, fuzzy, tolerancia), tests del evaluador (24 tests). Documentación en docs/evaluation.md. Verificado con `python -m pytest` (125 passed) y `python -m ruff check .` (All checks passed). |
 | B11 Despliegue local | Hecho | Agente | api.Dockerfile (python:3.10-slim, multi-stage), docker-compose.yml con perfiles opcionales vlm/redis, docs/deployment.md con requisitos GPU, tmpfs efímero, sin persistencia por defecto. Verificado con pytest (203 passed) y ruff (All checks passed). |
 | B12 Observabilidad/operación | Hecho | Agente | Logging estructurado por request con request_id, TimingCollector por etapa (pdf_classify, normalize, extract_candidates, validate_totals), include_debug con metadatos operativos SIN contenido de facturas, debug visual pendiente opt-in futuro, 16 tests nuevos en test_logging.py. Verificado con `python -m pytest` (219 passed) y `python -m ruff check .` (All checks passed). |

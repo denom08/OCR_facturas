@@ -38,6 +38,22 @@ paddleocr = [
     # runtime dependency is missing.
 ]
 
+# VLM local (Qwen2.5-VL) para casos complejos.
+# Requiere vLLM o Transformers + accelerate + qwen-vl-utils.
+# Install vLLM: pip install vllm>=0.4.0
+# Install Transformers: pip install transformers>=4.41.0 qwen-vl-utils accelerate
+# Los modelos se descargan automáticamente (~7GB para Qwen2.5-VL-7B).
+# Sin esta dependencia, el sistema responde con error controlado
+# y la API sigue funcionando para PDFs digitales, XML y OCR.
+vlm = [
+    "openai>=1.12",
+    # Meta-dependency note: we do NOT pin vllm here because GPU support
+    # is environment-specific. The user must install the appropriate backend
+    # (vLLM or Transformers) manually for their hardware.
+    # vLLM install: pip install vllm>=0.4.0
+    # Transformers install: pip install transformers>=4.41.0 qwen-vl-utils accelerate
+]
+
 [tool.setuptools.packages.find]
 include = ["app*"]
 exclude = ["docs*", "docker*", "scripts*", "tests*"]

@@ -267,3 +267,93 @@ Si en el futuro se necesita persistencia (auditoría, histórico), se implementa
 - Volúmenes explícitos activados con flags (`STORE_*=true`)
 - Opciones de cifrado en reposo
 - Políticas de retención configurables
+
+---
+
+## VLM local — Configuración y limitaciones (B9)
+
+### Arquitectura del VLM
+
+El VLM (Qwen2.5-VL) se usa como **apoyo**, no como fuente de verdad. Solo propone candidatos que deben pasar por los validadores de dominio (B2) y el resolutor de campos (B8) antes de aceptarse.
+
+```
+PDF/Digital/OCR → VLM propone → B8 resuelve → B2 valida → JSON final
+```
+
+### Modo de serving
+
+El VLM se comunica via interfaz OpenAI-compatible con vLLM:
+
+| Componente | Detalle |
+|---|---|
+| Interfaz | OpenAI Chat Completions API (`openai` package) |
+| Backend | vLLM (`http://localhost:8002/v1`) |
+| Modelo | `Qwen/Qwen2.5-VL-7B-Instruct` (configurable via `VLLM_MODEL`) |
+| Puerto por defecto | `8001` |
+
+### Instalación del backend VLM
+
+```bash
+# Instalar vLLM
+pip install vllm>=0.4.0
+
+# Iniciar servidor vLLM (requiere GPU NVIDIA)
+vllm serve Qwen/Qwen2.5-VL-7B-Instruct \
+  --port 8002 \
+  --gpu-memory-utilization 0.85 \
+  --max-model-len 4096
+```
+
+Alternativamente, usar Transformers directo (sin servidor):
+
+```bash
+pip install transformers>=4.41.0 qwen-vl-utils accelerate
+```
+
+### Dependencias opcionales
+
+El VLM es **extra opcional** en `pyproject.toml`:
+
+```bash
+# Solo API (sin VLM)
+pip install ocr-facturas
+
+# Con VLM
+pip install ocr-facturas[vlm]
+```
+
+### Reglas de invocación
+
+El VLM se invoca SOLO cuando:
+
+| Condición | Detalle |
+|---|---|
+| Campos obligatorios faltantes | `invoice_data.number`, `invoice_data.issue_date`, `supplier.tax_id`, `customer.tax_id` |
+| Confianza global baja | `< 0.6` |
+| Factura escaneada compleja | PDF tipo `scanned` con `tax_lines` vacías |
+| Tabla fiscal no resuelta | Layout no disponible o tax_lines sin resueltas |
+| OCR de baja calidad | Pocos bloques detectados |
+
+### Limitaciones
+
+| Aspecto | Limitación |
+|---|---|
+| GPU requerida | NVIDIA con VRAM > 12 GB |
+| Backend opcional | Sin vLLM/Transformers, la API funciona sin VLM |
+| VLM como propuesta | El VLM solo propone; B2/B8 validan y rechazan |
+| Lazy loading | No carga modelos hasta primera llamada |
+| Sin persistencia VLM | No se guardan imágenes ni respuestas del VLM |
+
+### Verificación de disponibilidad
+
+```python
+from app.infrastructure.vlm.qwen_vl_extractor import QwenVlExtractor
+
+extractor = QwenVlExtractor()
+if extractor.is_available():
+    result = extractor.extract(image_data, page=1)
+    for field in result.fields:
+        print(field.field_name, field.value)
+else:
+    print("VLM no disponible — usando pipeline sin VLM")
+```
