@@ -1,0 +1,56 @@
+# Entorno local
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos temporales y salidas locales
+tmp/
+temp/
+logs/
+*.log
+output/
+outputs/
+
+# Datos sensibles o pesados del proyecto
+models/
+data/private/
+tests/fixtures/private/
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.tiff
+*.xml
+
+# Docker/local runtime
+.docker/
