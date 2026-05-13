@@ -65,34 +65,34 @@ B0 Fundaciones
 
 **Objetivo:** dejar el repo preparado para implementar sin improvisar estructura ni herramientas.
 
-**Estado:** Pendiente
+**Estado:** Hecho
 
 ## Tareas
 
-- [ ] Crear estructura inicial de carpetas:
-  - [ ] `app/api`
-  - [ ] `app/domain`
-  - [ ] `app/application`
-  - [ ] `app/infrastructure`
-  - [ ] `app/shared`
-  - [ ] `tests/unit`
-  - [ ] `tests/integration`
-  - [ ] `tests/fixtures`
-  - [ ] `scripts`
-  - [ ] `docker`
-- [ ] Crear `pyproject.toml`.
-- [ ] Configurar dependencias iniciales:
-  - [ ] `fastapi`
-  - [ ] `uvicorn`
-  - [ ] `pydantic`
-  - [ ] `python-multipart`
-  - [ ] `pytest`
-  - [ ] `ruff`
-- [ ] Crear `README.md` con arranque local mínimo.
-- [ ] Crear `.env.example`.
-- [ ] Configurar `ruff`.
-- [ ] Configurar `pytest`.
-- [ ] Añadir prueba mínima de salud del proyecto.
+- [x] Crear estructura inicial de carpetas:
+  - [x] `app/api`
+  - [x] `app/domain`
+  - [x] `app/application`
+  - [x] `app/infrastructure`
+  - [x] `app/shared`
+  - [x] `tests/unit`
+  - [x] `tests/integration`
+  - [x] `tests/fixtures`
+  - [x] `scripts`
+  - [x] `docker`
+- [x] Crear `pyproject.toml`.
+- [x] Configurar dependencias iniciales:
+  - [x] `fastapi`
+  - [x] `uvicorn`
+  - [x] `pydantic`
+  - [x] `python-multipart`
+  - [x] `pytest`
+  - [x] `ruff`
+- [x] Crear `README.md` con arranque local mínimo.
+- [x] Crear `.env.example`.
+- [x] Configurar `ruff`.
+- [x] Configurar `pytest`.
+- [x] Añadir prueba mínima de salud del proyecto.
 
 ## Resultado verificable
 
@@ -114,41 +114,41 @@ debe ejecutarse correctamente aunque todavía no exista lógica real de extracci
 
 **Objetivo:** definir exactamente qué entra y qué sale antes de implementar motores de extracción.
 
-**Estado:** Pendiente
+**Estado:** Hecho
 
 ## Tareas
 
-- [ ] Diseñar schema Pydantic de respuesta:
-  - [ ] `InvoiceResponse`
-  - [ ] `Invoice`
-  - [ ] `Party`
-  - [ ] `InvoiceData`
-  - [ ] `TaxLine`
-  - [ ] `Totals`
-  - [ ] `Evidence`
-  - [ ] `ConfidenceReport`
-- [ ] Definir campos obligatorios y opcionales.
-  - [ ] Obligatorio: fecha de factura.
-  - [ ] Obligatorio: número de factura.
-  - [ ] Obligatorio: razón social del emisor.
-  - [ ] Obligatorio: CIF/NIF del emisor.
-  - [ ] Obligatorio: razón social del cliente.
-  - [ ] Obligatorio: CIF/NIF del cliente.
-  - [ ] Obligatorio: lista ordenada de líneas fiscales con porcentaje IVA, base imponible e importe IVA.
-  - [ ] Obligatorio: base imponible total.
-  - [ ] Obligatorio: total factura.
-  - [ ] Optativo: adelantos.
-  - [ ] Optativo: retenciones.
-- [ ] Definir formato de errores y warnings.
-- [ ] Definir contrato inicial del endpoint:
-  - [ ] `POST /api/v1/invoices/extract`
-  - [ ] `file`
-  - [ ] `force_ocr`
-  - [ ] `include_evidence`
-  - [ ] `include_debug`
-- [ ] Crear endpoint dummy que devuelva un JSON válido.
-- [ ] Añadir tests de contrato API.
-- [ ] Documentar contrato en `docs/invoice_schema.md`.
+- [x] Diseñar schema Pydantic de respuesta:
+  - [x] `InvoiceResponse`
+  - [x] `Invoice`
+  - [x] `Party`
+  - [x] `InvoiceData`
+  - [x] `TaxLine`
+  - [x] `Totals`
+  - [x] `Evidence`
+  - [x] `ConfidenceReport`
+- [x] Definir campos obligatorios y opcionales.
+  - [x] Obligatorio: fecha de factura.
+  - [x] Obligatorio: número de factura.
+  - [x] Obligatorio: razón social del emisor.
+  - [x] Obligatorio: CIF/NIF del emisor.
+  - [x] Obligatorio: razón social del cliente.
+  - [x] Obligatorio: CIF/NIF del cliente.
+  - [x] Obligatorio: lista ordenada de líneas fiscales con porcentaje IVA, base imponible e importe IVA.
+  - [x] Obligatorio: base imponible total.
+  - [x] Obligatorio: total factura.
+  - [x] Optativo: adelantos.
+  - [x] Optativo: retenciones.
+- [x] Definir formato de errores y warnings.
+- [x] Definir contrato inicial del endpoint:
+  - [x] `POST /api/v1/invoices/extract`
+  - [x] `file`
+  - [x] `force_ocr`
+  - [x] `include_evidence`
+  - [x] `include_debug`
+- [x] Crear endpoint dummy que devuelva un JSON válido.
+- [x] Añadir tests de contrato API.
+- [x] Documentar contrato en `docs/invoice_schema.md`.
 
 ## Resultado verificable
 
@@ -168,24 +168,24 @@ debe ejecutarse correctamente aunque todavía no exista lógica real de extracci
 
 **Objetivo:** construir las reglas que protegen el resultado final. Esta capa manda sobre la IA.
 
-**Estado:** Pendiente
+**Estado:** Hecho
 
 ## Tareas
 
-- [ ] Implementar normalización monetaria:
-  - [ ] coma decimal española;
-  - [ ] símbolo euro;
-  - [ ] separadores de miles;
-  - [ ] `Decimal`, nunca `float`.
-- [ ] Implementar validador de CIF/NIF/NIE.
-- [ ] Implementar validador de fechas.
-- [ ] Implementar validador de totales:
-  - [ ] base + IVA = total;
-  - [ ] múltiples tipos de IVA;
-  - [ ] retenciones si aparecen;
-  - [ ] tolerancia decimal de `0.01`.
-- [ ] Implementar estructura de warnings de dominio.
-- [ ] Crear tests unitarios exhaustivos.
+- [x] Implementar normalización monetaria:
+  - [x] coma decimal española;
+  - [x] símbolo euro;
+  - [x] separadores de miles;
+  - [x] `Decimal`, nunca `float`.
+- [x] Implementar validador de CIF/NIF/NIE.
+- [x] Implementar validador de fechas.
+- [x] Implementar validador de totales:
+  - [x] base + IVA = total;
+  - [x] múltiples tipos de IVA;
+  - [x] retenciones si aparecen;
+  - [x] tolerancia decimal de `0.01`.
+- [x] Implementar estructura de warnings de dominio.
+- [x] Crear tests unitarios exhaustivos.
 
 ## Resultado verificable
 
@@ -664,10 +664,10 @@ Usar esta tabla para mantener visibilidad del avance.
 
 | Bloque | Estado | Responsable | Notas |
 |---|---|---|---|
-| B0 Fundaciones | Pendiente | — | — |
-| B1 Contrato API + schema | Pendiente | — | — |
-| B2 Dominio + validadores | Pendiente | — | — |
-| B3 Infraestructura PDF | Pendiente | — | — |
+| B0 Fundaciones | Hecho | Agente | Estructura base, `pyproject.toml`, README, `.env.example`, pytest y ruff configurados. Verificado con `python -m pytest` y `python -m ruff check .`. |
+| B1 Contrato API + schema | Hecho | Agente | Schemas Pydantic, endpoint dummy, tests de contrato y `docs/invoice_schema.md`. Verificado con `python -m pytest` y `python -m ruff check .`. |
+| B2 Dominio + validadores | Hecho | Agente | Normalización monetaria, CIF/NIF/NIE, fechas, totales/IVA/retenciones y warnings de dominio. Verificado con `python -m pytest` y `python -m ruff check .`. |
+| B3 Infraestructura PDF | Pendiente | — | Siguiente bloque recomendado para Iteración 2. |
 | B4 Pipeline digital | Pendiente | — | — |
 | B5 XML embebido | Pendiente | — | — |
 | B6 OCR/renderizado | Pendiente | — | — |

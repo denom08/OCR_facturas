@@ -1,0 +1,1 @@
+"""Aplicación OCR Facturas."""

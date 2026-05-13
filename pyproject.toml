@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ocr-facturas"
+version = "0.1.0"
+description = "API local para extracción auditable de datos de facturas PDF."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.111,<1.0",
+    "pydantic>=2.7,<3.0",
+    "python-multipart>=0.0.9,<1.0",
+    "uvicorn[standard]>=0.29,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2,<9.0",
+    "ruff>=0.4,<1.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["docs*", "docker*", "scripts*", "tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
